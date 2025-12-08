@@ -44,4 +44,10 @@ export class UsersService {
 
     return savedUser;
   }
+  async findById(id: number): Promise<User | undefined> {
+    return this.usersRepository.findOne({
+      where: { id },
+      relations: ["userRoles", "userRoles.role"],
+    });
+  }
 }

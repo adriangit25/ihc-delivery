@@ -4,9 +4,11 @@ import {
   Column,
   ManyToOne,
   JoinColumn,
+  OneToMany,
 } from "typeorm";
 import { Restaurant } from "./restaurant.entity";
 import { Category } from "./category.entity";
+import { CartItem } from "./cart-item.entity";
 
 @Entity("productos")
 export class Product {
@@ -41,4 +43,7 @@ export class Product {
   @ManyToOne(() => Category, (category) => category.products)
   @JoinColumn({ name: "categoria_id" })
   category: Category;
+
+  @OneToMany(() => CartItem, (cartItem) => cartItem.product)
+  cartItems: CartItem[];
 }
