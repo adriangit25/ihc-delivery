@@ -1,13 +1,17 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Carrito } from './carrito.entity';
-import { CarritoItem } from './carrito-item.entity';
-import { Orden } from './orden.entity';
-import { AddToCartDto } from './dto/add-to-cart.dto';
-import { UpdateCartItemDto } from './dto/update-cart-item.dto';
-import { PayCartDto } from './dto/pay-cart.dto';
-import { Producto } from 'src/productos/productos.entity';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { Carrito } from "./carrito.entity";
+import { CarritoItem } from "./carrito-item.entity";
+import { Orden } from "./orden.entity";
+import { AddToCartDto } from "./dto/add-to-cart.dto";
+import { UpdateCartItemDto } from "./dto/update-cart-item.dto";
+import { PayCartDto } from "./dto/pay-cart.dto";
+import { Producto } from "src/productos/productos.entity";
 
 @Injectable()
 export class CarritoService {
@@ -22,14 +26,14 @@ export class CarritoService {
     private readonly ordenRepo: Repository<Orden>,
 
     @InjectRepository(Producto)
-    private readonly productosRepo: Repository<Producto>,
+    private readonly productosRepo: Repository<Producto>
   ) {}
 
   // Obtener o crear carrito activo de un usuario
   private async getOrCreateActiveCart(usu_id: number): Promise<Carrito> {
     let carrito = await this.carritoRepo.findOne({
       where: { usu_id, cart_estado: 1 },
-      relations: ['items', 'items.producto'],
+      relations: ["items", "items.producto"],
     });
 
     if (!carrito) {
@@ -46,7 +50,7 @@ export class CarritoService {
 
     const total = items.reduce(
       (acc, item) => acc + Number(item.item_subtotal),
-      0,
+      0
     );
 
     await this.carritoRepo.update(cart_id, { cart_total: total });
@@ -56,11 +60,11 @@ export class CarritoService {
   async getCartByUser(usu_id: number) {
     const carrito = await this.carritoRepo.findOne({
       where: { usu_id, cart_estado: 1 },
-      relations: ['items', 'items.producto'],
+      relations: ["items", "items.producto"],
     });
 
     if (!carrito) {
-      return { message: 'Carrito vacío', items: [], cart_total: 0 };
+      return { message: "Carrito vacío", items: [], cart_total: 0 };
     }
 
     return carrito;
@@ -71,17 +75,17 @@ export class CarritoService {
     const { usu_id, prod_id, cantidad } = dto;
 
     if (cantidad <= 0) {
-      throw new BadRequestException('La cantidad debe ser mayor a cero');
+      throw new BadRequestException("La cantidad debe ser mayor a cero");
     }
 
     const producto = await this.productosRepo.findOne({ where: { prod_id } });
 
     if (!producto) {
-      throw new NotFoundException('Producto no encontrado');
+      throw new NotFoundException("Producto no encontrado");
     }
 
     if (producto.prod_estado !== 1) {
-      throw new BadRequestException('Producto no disponible');
+      throw new BadRequestException("Producto no disponible");
     }
 
     const carrito = await this.getOrCreateActiveCart(usu_id);
@@ -119,7 +123,7 @@ export class CarritoService {
     const item = await this.itemRepo.findOne({ where: { item_id } });
 
     if (!item) {
-      throw new NotFoundException('Item no encontrado');
+      throw new NotFoundException("Item no encontrado");
     }
 
     if (cantidad <= 0) {
@@ -146,7 +150,7 @@ export class CarritoService {
     const item = await this.itemRepo.findOne({ where: { item_id } });
 
     if (!item) {
-      throw new NotFoundException('Item no encontrado');
+      throw new NotFoundException("Item no encontrado");
     }
 
     const cart_id = item.cart_id;
@@ -154,7 +158,7 @@ export class CarritoService {
     await this.itemRepo.remove(item);
     await this.recalculateCartTotal(cart_id);
 
-    return { message: 'Item eliminado del carrito' };
+    return { message: "Item eliminado del carrito" };
   }
 
   // Pagar carrito
@@ -163,15 +167,15 @@ export class CarritoService {
 
     const carrito = await this.carritoRepo.findOne({
       where: { usu_id, cart_estado: 1 },
-      relations: ['items'],
+      relations: ["items"],
     });
 
     if (!carrito) {
-      throw new NotFoundException('No se encontró carrito activo');
+      throw new NotFoundException("No se encontró carrito activo");
     }
 
     if (!carrito.items || carrito.items.length === 0) {
-      throw new BadRequestException('El carrito está vacío');
+      throw new BadRequestException("El carrito está vacío");
     }
 
     // (Opcional) Actualizar stock de productos
@@ -202,7 +206,7 @@ export class CarritoService {
     const nuevaOrden = await this.ordenRepo.save(orden);
 
     return {
-      message: 'Carrito pagado correctamente',
+      message: "Carrito pagado correctamente",
       orden: nuevaOrden,
     };
   }
@@ -211,9 +215,23 @@ export class CarritoService {
   async getOrdersByUser(usu_id: number) {
     const ordenes = await this.ordenRepo.find({
       where: { usu_id },
-      order: { ord_fecha: 'DESC' },
+      order: { ord_fecha: "DESC" },
+      relations: ["carrito", "carrito.items", "carrito.items.producto"],
     });
 
     return ordenes;
+  }
+
+  // Obtener todas las órdenes (Admin)
+  async findAllOrders() {
+    return this.ordenRepo.find({
+      order: { ord_fecha: "DESC" },
+      relations: [
+        "usuario",
+        "carrito",
+        "carrito.items",
+        "carrito.items.producto",
+      ],
+    });
   }
 }
